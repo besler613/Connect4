@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Connect4_TestApplication"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow">
     <Window.Resources>
         <DataTemplate x:Key="moveButton_DataTemplate">
             <Button Content="&#8681;" Width="50" FontSize="24" Click="Button_Click_1"/>
