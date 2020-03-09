@@ -20,14 +20,11 @@ namespace Connect4
         #region Member Variables
         public const int MaxBoardWidth = 9;
         private Boolean _redPlayerStarts = true;    // May be set to false if the initial loaded position is part way through the game
-        private uint _columnHeights;
         private ulong _bitBoard;
         private Stack<int> _moves = new Stack<int>();
         private CheckerStateEnum _Winner = CheckerStateEnum.Empty;
         public int BoardWidth { get; }
         public int BoardHeight { get; }
-        public ulong BitBoard { get { return _bitBoard; } }
-        public uint ColumnHeights { get { return _columnHeights; } }
         public Stack<int> Moves { get { return _moves; } }
         public CheckerStateEnum PlayerToMove
         {
@@ -63,9 +60,6 @@ namespace Connect4
             _SearchDirections.Add(new int[] { -1, -1 });
             _SearchDirections.Add(new int[] { -1, 0 });
             _SearchDirections.Add(new int[] { -1, 1 });
-            _SearchDirections.Add(new int[] { 0, 1 });
-            _SearchDirections.Add(new int[] { 1, 1 });
-            _SearchDirections.Add(new int[] { 1, -1 });
         }
         #endregion
 
@@ -98,11 +92,11 @@ namespace Connect4
             if (toMove == CheckerStateEnum.Yellow)
                 //If Yellow moved, we need to flip the bit that is one decimal place larger than the current column height
                 //But remember: Red is represented as 0's in our bitboard, so we don't need to modify our bitboard if they moved!
-                _bitBoard += (ulong)Math.Pow(2, (8 * columnIndex + ((byte)((int)_columnHeights >> 4 * columnIndex))));
-            _columnHeights += (uint)Math.Pow(2, (4 * columnIndex));
-            int rowIndex = Convert.ToInt32((_columnHeights >> 4 * columnIndex) - 1 & 0b1111);
+                _bitBoard += (ulong)Math.Pow(2, 7 * columnIndex + ((byte)((int)_bitBoard >> 3 * columnIndex)) + 21);  //The first 21 bits are reserved for the column heights
+            _bitBoard += (ulong)Math.Pow(2, (3 * columnIndex));
+            int rowIndex = Convert.ToInt32((_bitBoard >> 3 * columnIndex) - 1 & 0b111);
             _moves.Push(columnIndex);
-            _Winner = checkForFour(rowIndex, columnIndex);
+            _Winner = checkForFour(rowIndex, columnIndex, toMove);
             RaiseMoveMade(rowIndex, columnIndex, toMove);
         }
         public void TakebackMoves(int numMoves)
@@ -113,9 +107,9 @@ namespace Connect4
             {
                 int nextMove = _moves.Pop();
                 if (PlayerToMove == CheckerStateEnum.Yellow)
-                    _bitBoard -= (ulong)Math.Pow(2, (8 * nextMove + ((byte)((int)_columnHeights >> 4 * nextMove))) - 1);
-                _columnHeights -= (uint)Math.Pow(2, 4 * nextMove);
-                int rowIndex = Convert.ToInt32((_columnHeights >> 4 * nextMove) & 0b1111);
+                _bitBoard -= (ulong)Math.Pow(2, (7 * nextMove + ((byte)((int)_bitBoard >> 3 * nextMove))) + 20);  //The first 21 bits are reserved for the column heights
+                _bitBoard -= (ulong)Math.Pow(2, 3 * nextMove);
+                int rowIndex = Convert.ToInt32((_bitBoard >> 3 * nextMove) & 0b111);
                 _Winner = CheckerStateEnum.Empty;    // NOTE: This assumes that a game did not continue after someone won, which is up to the consumer to enforce! 
                 RaiseMoveTakeBack(rowIndex, nextMove);
             }
@@ -130,36 +124,44 @@ namespace Connect4
                 throw new ArgumentException("Invalid Request: Column index of " + column.ToString() + " exceeds the board height (" + BoardWidth.ToString() + ").");
             else if (column < 0)
                 throw new IndexOutOfRangeException("Invalid Request: Column Index must be >= 0.");
-            if (row >= ((_columnHeights >> 4 * column) & 0b1111))
+            if (row >= (int)((_bitBoard >> 3 * column) & 0b111))
                 return CheckerStateEnum.Empty;   //Requested position exceeds column height, so it must be empty
-            return (CheckerStateEnum)Enum.ToObject(typeof(CheckerStateEnum), ((_bitBoard >> (8 * column + 4 * row)) & 1));
+            return (CheckerStateEnum)Enum.ToObject(typeof(CheckerStateEnum), ((_bitBoard >> (7 * column + row + 21)) & 1));
         }
         #endregion
 
         #region Private Methods
         private List<int[]> _SearchDirections = new List<int[]> ();    //We search for wins from top down, so we only need to search west, southwest, south, southeast, and     //We search for wins from top down, so we only need to search west, southwest, south, southeast, and east
-        private CheckerStateEnum checkForFour(int startRow, int startColumn)
+        private CheckerStateEnum checkForFour(int startRow, int startColumn, CheckerStateEnum whoMoved)
         {
-            CheckerStateEnum playerWhoMoved = GetPositionState(startRow, startColumn);
             foreach (int[] dir in _SearchDirections)
             {
-                int nextRow = startRow;
-                int nextColumn = startColumn;
-                int counter = 0;
-                while (nextRow >= 0 && nextRow < BoardHeight && nextColumn >= 0 && nextColumn < BoardWidth
-                    && GetPositionState(nextRow, nextColumn) == playerWhoMoved)
+                foreach (int magnitude in new int[]{ 1, -1})    //We must search in both directions along the line defined by the vector dir
                 {
-                    counter++;
-                    if (counter == 4)
-                        // We have ourselves a winner!
-                        return playerWhoMoved;
-                    nextRow += dir[0];
-                    nextColumn += dir[1];
+                    int nextRow = startRow + magnitude * dir[0];
+                    int nextColumn = startColumn + magnitude * dir[1];
+                    int counter = 0;
+                    while (nextRow >= 0 && nextRow < BoardHeight && nextColumn >= 0 && nextColumn < BoardWidth
+                        && GetPositionState(nextRow, nextColumn) == whoMoved)
+                    {
+                        counter++;
+                        if (counter == 3)
+                            return whoMoved;  // We have ourselves a winner!
+                        nextRow += magnitude * dir[0];
+                        nextColumn += magnitude * dir[1];
+                    }
                 }
             }
             return CheckerStateEnum.Empty;  //Use empty to indicate that there is no winner
         }
-        
+        //private void incrementColumnHeight(int column)
+        //{
+        //    _bitBoard += (uint)Math.Pow(2, (3 * column));
+        //}
+        //private int getColumnHeight(int column)
+        //{
+        //    return (int)((_bitBoard >> 3 * column) & 0b111);
+        //}
         #endregion
 
         #region Classes and Enums
