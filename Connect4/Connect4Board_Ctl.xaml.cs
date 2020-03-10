@@ -17,7 +17,7 @@ using System.Globalization;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Connect4_TestApplication
+namespace Connect4
 {
     /// <summary>
     /// Interaction logic for Connect4Board_Ctl.xaml
