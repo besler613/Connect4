@@ -52,6 +52,9 @@
     <Compile Include="Controls\ConfigureGame_Ctl.xaml.cs">
       <DependentUpon>ConfigureGame_Ctl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\Connect4Board_Ctl.xaml.cs">
+      <DependentUpon>Connect4Board_Ctl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Position and Board\Class1.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -81,6 +84,10 @@
     <Page Include="Controls\ConfigureGame_Ctl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\Connect4Board_Ctl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\Resources.xaml">
       <SubType>Designer</SubType>
