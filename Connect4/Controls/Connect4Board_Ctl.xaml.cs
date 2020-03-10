@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Connect4_TestApplication.Connect4Board_Ctl"
+﻿<UserControl x:Class="Connect4.Connect4Board_Ctl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
