@@ -34,7 +34,7 @@ namespace Connect4_TestApplication
         #region Public Fields
         private int _BoardWidth;
         private int _BoardHeight;
-        private Connect4.GamePosition.CheckerStateEnum _CurrentWinner = Connect4.GamePosition.CheckerStateEnum.Empty;
+        private Connect4.GamePosition.CheckerStateEnum _CurrentWinner = Connect4.GamePosition.CheckerStateEnum.None;
         private Connect4.GamePosition _GameBoard;
         public Connect4.GamePosition GameBoard
         {
@@ -42,13 +42,14 @@ namespace Connect4_TestApplication
             set
             {
                 _GameBoard = value;
+                Connect4.GamePosition.CheckerStateEnum[,] gameBoardColumns = _GameBoard.GetBoardColumns();
                 BoardWidth = _GameBoard.BoardWidth;
                 BoardHeight = _GameBoard.BoardHeight;
                 for (int i = _GameBoard.BoardHeight - 1; i >= 0; i--)   //We have to swap the indexing here since index 0 is at the bottom of a Connect 4 Board
                 {
                     Connect4Board_RowViewModel nextRow = new Connect4Board_RowViewModel();
                     for (int j = 0; j < _GameBoard.BoardWidth; j++)
-                        nextRow.RowData.Add(new Connect4Board_CheckerModel(_GameBoard.GetPositionState(i, j)));
+                        nextRow.RowData.Add(new Connect4Board_CheckerModel(gameBoardColumns[i, j]));
                     BoardData.Add(nextRow);
                 }
                 _GameBoard.MoveMade += (int row, int column, Connect4.GamePosition.CheckerStateEnum checker) =>
@@ -58,7 +59,7 @@ namespace Connect4_TestApplication
                 };
                 _GameBoard.MoveTakeBack += (int row, int column) =>
                 {
-                    BoardData[_GameBoard.BoardHeight - row - 1].RowData[column].CheckerState = Connect4.GamePosition.CheckerStateEnum.Empty;
+                    BoardData[_GameBoard.BoardHeight - row - 1].RowData[column].CheckerState = Connect4.GamePosition.CheckerStateEnum.None;
                     CurrentWinner = _GameBoard.GameWinner;
                 };
                 OnPropertyChanged();
@@ -126,7 +127,7 @@ namespace Connect4_TestApplication
     public class Connect4Board_CheckerModel : System.ComponentModel.INotifyPropertyChanged
     {
         #region Public Fields
-        private Connect4.GamePosition.CheckerStateEnum _Checker = Connect4.GamePosition.CheckerStateEnum.Empty;
+        private Connect4.GamePosition.CheckerStateEnum _Checker = Connect4.GamePosition.CheckerStateEnum.None;
         public Connect4.GamePosition.CheckerStateEnum CheckerState
         {
             get { return _Checker; }
@@ -184,7 +185,7 @@ namespace Connect4_TestApplication
         {
             switch ((Connect4.GamePosition.CheckerStateEnum)value)
             {
-                case Connect4.GamePosition.CheckerStateEnum.Empty:
+                case Connect4.GamePosition.CheckerStateEnum.None:
                     return System.Windows.Visibility.Collapsed;
                 default:
                     return System.Windows.Visibility.Visible;

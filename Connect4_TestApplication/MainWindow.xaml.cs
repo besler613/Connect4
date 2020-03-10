@@ -29,7 +29,8 @@ namespace Connect4_TestApplication
         {
             int width = 7;
             int height = 6;
-            board_VM.GameBoard = new Connect4.GamePosition(width, height);
+            int numberToWin = 4;
+            board_VM.GameBoard = new Connect4.GamePosition(width, height, numberToWin);
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
@@ -39,7 +40,7 @@ namespace Connect4_TestApplication
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            if (board_VM.GameBoard.Moves.Count > 0)
+            if (board_VM.GameBoard.NumberOfMoves > 0)
                 board_VM.GameBoard.TakebackMoves(1);
         }
     }
