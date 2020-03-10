@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Connect4_TestApplication"
+        xmlns:connect4="clr-namespace:Connect4;assembly=Connect4"
         mc:Ignorable="d"
         Title="MainWindow">
     <Window.Resources>
@@ -12,7 +13,7 @@
         </DataTemplate>
     </Window.Resources>
     <Window.DataContext>
-        <local:Connect4Board_CtlViewModel x:Name="board_VM"/>
+        <connect4:Connect4Board_CtlViewModel x:Name="board_VM"/>
     </Window.DataContext>
     <!--<Window.CommandBindings>
         <CommandBinding Command="NewGame"
@@ -49,7 +50,7 @@
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
         </ItemsControl>
-        <local:Connect4Board_Ctl x:Name="board" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="7" HorizontalAlignment="Center"/>
+        <connect4:Connect4Board_Ctl x:Name="board" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="7" HorizontalAlignment="Center"/>
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center">
             <Button Content="Takeback Move" Click="Button_Click"/>
         </StackPanel>
@@ -57,7 +58,7 @@
             <Border.Visibility>
                 <Binding ElementName="board" Path="DataContext.CurrentWinner" FallbackValue="Collapsed">
                     <Binding.Converter>
-                        <local:GameStateToVisibilityConverter/>
+                        <connect4:GameStateToVisibilityConverter/>
                     </Binding.Converter>
                 </Binding>
             </Border.Visibility>
@@ -65,7 +66,7 @@
                 <TextBlock.Text>
                     <Binding ElementName="board" Path="DataContext.CurrentWinner">
                         <Binding.Converter>
-                            <local:GameStateToStringConverter/>
+                            <connect4:GameStateToStringConverter/>
                         </Binding.Converter>
                     </Binding>
                 </TextBlock.Text>
