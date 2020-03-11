@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Bson.Serialization.IdGenerators;
-using MongoDB.Bson;
 
 namespace Connect4
 {
@@ -23,6 +20,9 @@ namespace Connect4
 	/// </item>
 	/// </list>
 	/// </summary>
+	/// <remarks>The basic idea which I use here (encoding the position in two bitboards to allow fast manipulations) was first created by the famous A.I. specialist
+	/// John Tromp in the 1990's.  His original idea has been expanded on slightly to allow for more space efficient storage (see <see cref="ID"/>, and to allow for different target
+	/// lengths (e.g. "Connect 5" or "Connect 3").</remarks>
 	public class GamePosition
 	{
 		#region Member Variables
@@ -31,14 +31,14 @@ namespace Connect4
 		/// <para><b>Note:</b> Choice of board width implicitely limits the board height: The inequality <code>(width * (height + 1) <= 64)</code> cannot be violated.</para>
 		/// </summary>
 		public const int MaxBoardWidth = 9;
-		protected Boolean _RedPlayerStarts = true;
-		protected Stack<int> _Moves = new Stack<int>();
-		protected ulong bitBoardRed;
-		protected ulong bitBoardYellow;
-		protected int[] nextAvailableRow;
+		private Boolean _RedPlayerStarts = true;
+		private Stack<int> _Moves = new Stack<int>();
+		private ulong bitBoardRed;
+		private ulong bitBoardYellow;
+		private int[] nextAvailableRow;
 		private readonly int[] bitmapShiftValues;    //Setting up our bitmap shifting distances.  These will be used to shift our bitmaps along the four different directions in which one can achieve a line (vertical, diagonal down, horizontal, diagonal up).
-		protected readonly ulong bottomRow;  // This is used for the transformation to a unique ID
-		protected readonly ulong topRow;  // This is used for the transformation FROM our unique ID
+		private readonly ulong bottomRow;  // This is used for the transformation to a unique ID
+		private readonly ulong topRow;  // This is used for the transformation FROM our unique ID
 		private int numberToWin;
 		/// <summary>
 		/// The width of the current board.
@@ -56,7 +56,7 @@ namespace Connect4
 		/// <summary>
 		/// Returns an integer representing the number of moves made since the game was created.
 		/// </summary>
-		public int NumberOfMoves { get {return _Moves.Count; } }
+		public int NumberOfMoves { get { return _Moves.Count; } }
 		/// <summary>
 		/// Indicates the player whose turn it is to move.
 		/// </summary>
@@ -71,11 +71,56 @@ namespace Connect4
 					return CheckerStateEnum.Yellow;    // Otherwise it must be reds turn.
 			}
 		}
-        /// <summary>
-        /// Indicates the current winner of the game.
-        /// </summary>
-        /// <value>A <see cref="CheckerStateEnum"/> representing the winner given the position on the board, with <b>Empty</b> representing an ongoing or drawn game./></value>
-        public CheckerStateEnum GameWinner { get; private set; } = CheckerStateEnum.None;
+		/// <summary>
+		/// Indicates the current winner of the game.
+		/// </summary>
+		/// <value>A <see cref="CheckerStateEnum"/> representing the winner given the position on the board, with <b>Empty</b> representing an ongoing or drawn game./></value>
+		public CheckerStateEnum GameWinner { get; private set; } = CheckerStateEnum.None;
+		/// <summary>
+		/// This property encodes/decodes the current game position into a single, unique <b>BitBoard</b>.
+		/// </summary>
+		/// <remarks>Since the output of this property uniquely represents the full state of a game, it is ideal for use as the unique ID for a database table.</remarks>
+		public ulong ID
+		{
+			get
+			{
+				// Step-by-Step Explanation:
+				// 1) "bitBoardYellow ^ bitBoardRed..." - This gives us a mask identifying all occupied spaces, 
+				// 2) "...+ bitBoardRed + bottomRow" - This results in a bitboard identical to bitBoardRed but with an extra 1 at the top of every column.  This is used to indicate the first unnoccupied square and has the function of making the ID unique.
+				return (bitBoardYellow ^ bitBoardRed) + bottomRow + bitBoardRed;
+			}
+			set
+			{
+				_Moves.Clear();
+				bitBoardRed = value;
+				bitBoardYellow = ~value & (ulong)(Math.Pow(2, (BoardHeight + 1) * BoardWidth) - 1);
+				ulong searchMask = topRow;
+				int numberOfMoves = 0;
+				//Step 1: Our searchMask will "rain down" from the top row and every time we see a non-zero "&" operation with our bitBoardRed, we'll know we've hit the first non-empty row of a column.
+				while (searchMask > 0)
+				{
+					ulong columnTopBits = bitBoardRed & searchMask;
+					searchMask -= columnTopBits;
+					bitBoardYellow -= searchMask;
+					while (columnTopBits > 0)
+					{
+						// We have at least one "first non-empty row" identifier.  Put these into our nextRowForColumn array and remove from our bitBoardRed.
+						// First we find the least significant bit in our set.
+						ulong leastSignificantBit = columnTopBits & (~columnTopBits + 1);
+						// Next, we remove that bit from our bitMapRed and our firstSetBits
+						columnTopBits -= leastSignificantBit;
+						bitBoardRed -= leastSignificantBit;
+						int lsbLog = (int)Math.Log(leastSignificantBit, 2);
+						int columnIndex = lsbLog / (int)(BoardHeight + 1);
+						nextAvailableRow[(int)(columnIndex)] = lsbLog;
+						numberOfMoves += lsbLog - (BoardHeight + 1) * columnIndex;
+					}
+					searchMask >>= 1;
+				}
+				// Now we use the total number of moves to determine whose move it is
+				_RedPlayerStarts = (numberOfMoves & 1) == 0;
+			}
+		}
 		#endregion
 
 		#region Constructors
@@ -176,10 +221,10 @@ namespace Connect4
 			if (numMoves > _Moves.Count)
 				throw new ArgumentException("Invalid takeback request: Number of takebacks (" + numMoves.ToString() + ") exceeds the number of moves made (" + _Moves.Count.ToString() + ").");
 			else if (numMoves < 0)
-                throw new ArgumentException("Invalid takeback request: Number of takebacks (" + numMoves.ToString() + ") cannot be negative.");
-            for (int i = 0; i < numMoves; i++)
-            {
-                int columnIndex = _Moves.Pop();
+				throw new ArgumentException("Invalid takeback request: Number of takebacks (" + numMoves.ToString() + ") cannot be negative.");
+			for (int i = 0; i < numMoves; i++)
+			{
+				int columnIndex = _Moves.Pop();
 				int rowIndex = --nextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
 				(PlayerToMove == CheckerStateEnum.Red ? ref bitBoardRed : ref bitBoardYellow) ^= ((ulong)1 << nextAvailableRow[columnIndex]);
 				GameWinner = CheckerStateEnum.None;    // NOTE: This assumes that a game did not continue after someone won, which is up to the consumer to enforce! 
@@ -272,53 +317,5 @@ namespace Connect4
 			Yellow = 1
 		}
 		#endregion
-	}
-	/// <summary>
-	/// An extension of the <see cref="GamePosition"/> class which serves as a datamodel for storage in a MongoDB database.
-	/// <para>The ID attribute is generated by encoding the two <b>BitBoards</b> representing the game state into one <b>BitBoard</b> which serves as a unique key for the position while also directly representing the position.</para>
-	public class GamePosition_DataModel : GamePosition
-	{
-		[BsonIdAttribute]
-		public ulong ID
-		{
-			get
-			{
-				// Step-by-Step Explanation:
-				// 1) "bitBoardYellow ^ bitBoardRed..." - This gives us a mask identifying all occupied spaces, 
-				// 2) "...+ bitBoardRed + bottomRow" - This results in a bitboard identical to bitBoardRed but with an extra 1 at the top of every column.  This is used to indicate the first unnoccupied square and has the function of making the ID unique.
-				return (bitBoardYellow ^ bitBoardRed) + bottomRow + bitBoardRed;
-			}
-			set
-			{
-				_Moves.Clear();
-				bitBoardRed = value;
-				bitBoardYellow = ~value & (ulong)(Math.Pow(2, (BoardHeight + 1) * BoardWidth) - 1);
-				ulong searchMask = topRow;
-				int numberOfMoves = 0;
-				//Step 1: Our searchMask will "rain down" from the top row and every time we see a non-zero "&" operation with our bitBoardRed, we'll know we've hit the first non-empty row of a column.
-				while (searchMask > 0)
-				{
-					ulong columnTopBits = bitBoardRed & searchMask;
-					searchMask -= columnTopBits;
-					bitBoardYellow -= searchMask;
-					while (columnTopBits > 0)
-					{
-						// We have at least one "first non-empty row" identifier.  Put these into our nextRowForColumn array and remove from our bitBoardRed.
-						// First we find the least significant bit in our set.
-						ulong leastSignificantBit = columnTopBits & (~columnTopBits + 1);
-						// Next, we remove that bit from our bitMapRed and our firstSetBits
-						columnTopBits -= leastSignificantBit;
-						bitBoardRed -= leastSignificantBit;
-						int lsbLog = (int)Math.Log(leastSignificantBit, 2);
-						int columnIndex = lsbLog / (int)(BoardHeight + 1);
-						nextAvailableRow[(int)(columnIndex)] = lsbLog;
-						numberOfMoves += lsbLog - (BoardHeight + 1) * columnIndex;
-					}
-					searchMask >>= 1;
-				}
-				// Now we use the total number of moves to determine whose move it is
-				_RedPlayerStarts = (numberOfMoves & 1) == 0;
-			}
-		}
 	}
 }

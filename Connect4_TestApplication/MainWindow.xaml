@@ -62,7 +62,7 @@
                     </Binding.Converter>
                 </Binding>
             </Border.Visibility>
-            <TextBlock FontSize="30" FontWeight="Bold" Foreground="Red">
+            <TextBlock FontSize="30" FontWeight="Bold" Foreground="Red" HorizontalAlignment="Center" VerticalAlignment="Top">
                 <TextBlock.Text>
                     <Binding ElementName="board" Path="DataContext.CurrentWinner">
                         <Binding.Converter>
