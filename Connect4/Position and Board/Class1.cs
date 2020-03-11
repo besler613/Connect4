@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.IdGenerators;
+using MongoDB.Bson;
 
 namespace Connect4
 {
@@ -31,12 +31,14 @@ namespace Connect4
 		/// <para><b>Note:</b> Choice of board width implicitely limits the board height: The inequality <code>(width * (height + 1) <= 64)</code> cannot be violated.</para>
 		/// </summary>
 		public const int MaxBoardWidth = 9;
-		private Boolean _RedPlayerStarts = true;
-		private Stack<int> _Moves = new Stack<int>();
-		private ulong bitBoardRed;
-		private ulong bitBoardYellow;
-		private int[] nextRowForColumn;
-		private int[] bitmapShiftValues = new int[4];
+		protected Boolean _RedPlayerStarts = true;
+		protected Stack<int> _Moves = new Stack<int>();
+		protected ulong bitBoardRed;
+		protected ulong bitBoardYellow;
+		protected int[] nextAvailableRow;
+		private readonly int[] bitmapShiftValues;    //Setting up our bitmap shifting distances.  These will be used to shift our bitmaps along the four different directions in which one can achieve a line (vertical, diagonal down, horizontal, diagonal up).
+		protected readonly ulong bottomRow;  // This is used for the transformation to a unique ID
+		protected readonly ulong topRow;  // This is used for the transformation FROM our unique ID
 		private int numberToWin;
 		/// <summary>
 		/// The width of the current board.
@@ -100,14 +102,20 @@ namespace Connect4
 			this.numberToWin = numberToWin;
 			BoardWidth = width;
 			BoardHeight = height;
-			nextRowForColumn = new int[BoardWidth];
+			nextAvailableRow = new int[BoardWidth];
 			for (int i = 0; i < BoardWidth; i++)
-				nextRowForColumn[i] = i * 7;
-			//Setting up our bitmap shifting distances.  These will be used to shift our bitmaps along the four different directions in which one can achieve a line (vertical, horizontal, diagonal down, diagonal up).
-			bitmapShiftValues[0] = 1;   // Vertical
-			bitmapShiftValues[1] = 6; // Diagonal Down
-			bitmapShiftValues[2] = 7; // Horizontal
-			bitmapShiftValues[3] = 8; // Diagonal Up
+				nextAvailableRow[i] = i * (BoardHeight + 1);
+			bitmapShiftValues = new int[4] { 1, BoardHeight, BoardHeight + 1, BoardHeight + 2 };
+			ulong topPositionInColumn = ((ulong)1 << BoardHeight);
+			bottomRow = 1;
+			topRow = topPositionInColumn;
+			for (int i = 1; i < BoardWidth; i++)
+			{
+				bottomRow <<= BoardHeight + 1;
+				topRow <<= BoardHeight + 1;
+				bottomRow += 1;
+				topRow += topPositionInColumn;
+			}
 		}
 		#endregion
 
@@ -142,7 +150,7 @@ namespace Connect4
 		public void PlayMove(int columnIndex)
 		{
 			// Error checking our input
-			int rowIndex = nextRowForColumn[columnIndex] - 7 * columnIndex;
+			int rowIndex = nextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
 			if (columnIndex >= BoardWidth)
 				throw new ArgumentException("Invalid Move: Column index of " + columnIndex.ToString() + " exceeds the board width (" + BoardWidth.ToString() + ").");
 			else if (columnIndex < 0)
@@ -172,8 +180,8 @@ namespace Connect4
             for (int i = 0; i < numMoves; i++)
             {
                 int columnIndex = _Moves.Pop();
-				int rowIndex = --nextRowForColumn[columnIndex] - 7 * columnIndex;
-				(PlayerToMove == CheckerStateEnum.Red ? ref bitBoardRed : ref bitBoardYellow) ^= ((ulong)1 << nextRowForColumn[columnIndex]);
+				int rowIndex = --nextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
+				(PlayerToMove == CheckerStateEnum.Red ? ref bitBoardRed : ref bitBoardYellow) ^= ((ulong)1 << nextAvailableRow[columnIndex]);
 				GameWinner = CheckerStateEnum.None;    // NOTE: This assumes that a game did not continue after someone won, which is up to the consumer to enforce! 
 				RaiseMoveTakeBack(rowIndex, columnIndex);
 			}
@@ -185,7 +193,7 @@ namespace Connect4
 		/// <returns><see cref="Boolean"/> value indicating whether the move is legal and valid.</returns>
 		public Boolean IsValidMove(int columnIndex)
 		{
-			return (!(columnIndex >= BoardWidth || columnIndex < 0 || nextRowForColumn[columnIndex] - 7 * columnIndex >= BoardHeight));
+			return (!(columnIndex >= BoardWidth || columnIndex < 0 || nextAvailableRow[columnIndex] - 7 * columnIndex >= BoardHeight));
 		}
 		/// <summary>
 		/// Returns a representation of the current board position./>
@@ -198,9 +206,9 @@ namespace Connect4
 			{
 				for (int j = 0; j < BoardWidth; j++)
 				{
-					if (i < nextRowForColumn[j] - 7 * j)
+					if (i < nextAvailableRow[j] - (BoardHeight + 1) * j)
 					{
-						if ((bitBoardRed & ((ulong)1 << 7 * j + i)) != 0)
+						if ((bitBoardRed & ((ulong)1 << (BoardHeight + 1) * j + i)) != 0)
 							board[i, j] = CheckerStateEnum.Red; // Red checker found.
 						else
 							// NOTE: We're lower than the uppermost checker, and a red one wasn't found here, so we must have a yellow.
@@ -228,7 +236,7 @@ namespace Connect4
 		/// </remarks>
 		protected void playMove_Internal(int columnIndex, CheckerStateEnum toMove)
 		{
-			ulong encodedMove = (ulong)1 << nextRowForColumn[columnIndex]++;    // Doing two things: Encoding our move into its own bitboard "encodedMove", and incrementing our column height.
+			ulong encodedMove = (ulong)1 << nextAvailableRow[columnIndex]++;    // Doing two things: Encoding our move into its own bitboard "encodedMove", and incrementing our column height.
 			(toMove == CheckerStateEnum.Red ? ref bitBoardRed : ref bitBoardYellow) ^= encodedMove;
 		}
 		/// <summary>
@@ -264,5 +272,53 @@ namespace Connect4
 			Yellow = 1
 		}
 		#endregion
+	}
+	/// <summary>
+	/// An extension of the <see cref="GamePosition"/> class which serves as a datamodel for storage in a MongoDB database.
+	/// <para>The ID attribute is generated by encoding the two <b>BitBoards</b> representing the game state into one <b>BitBoard</b> which serves as a unique key for the position while also directly representing the position.</para>
+	public class GamePosition_DataModel : GamePosition
+	{
+		[BsonIdAttribute]
+		public ulong ID
+		{
+			get
+			{
+				// Step-by-Step Explanation:
+				// 1) "bitBoardYellow ^ bitBoardRed..." - This gives us a mask identifying all occupied spaces, 
+				// 2) "...+ bitBoardRed + bottomRow" - This results in a bitboard identical to bitBoardRed but with an extra 1 at the top of every column.  This is used to indicate the first unnoccupied square and has the function of making the ID unique.
+				return (bitBoardYellow ^ bitBoardRed) + bottomRow + bitBoardRed;
+			}
+			set
+			{
+				_Moves.Clear();
+				bitBoardRed = value;
+				bitBoardYellow = ~value & (ulong)(Math.Pow(2, (BoardHeight + 1) * BoardWidth) - 1);
+				ulong searchMask = topRow;
+				int numberOfMoves = 0;
+				//Step 1: Our searchMask will "rain down" from the top row and every time we see a non-zero "&" operation with our bitBoardRed, we'll know we've hit the first non-empty row of a column.
+				while (searchMask > 0)
+				{
+					ulong columnTopBits = bitBoardRed & searchMask;
+					searchMask -= columnTopBits;
+					bitBoardYellow -= searchMask;
+					while (columnTopBits > 0)
+					{
+						// We have at least one "first non-empty row" identifier.  Put these into our nextRowForColumn array and remove from our bitBoardRed.
+						// First we find the least significant bit in our set.
+						ulong leastSignificantBit = columnTopBits & (~columnTopBits + 1);
+						// Next, we remove that bit from our bitMapRed and our firstSetBits
+						columnTopBits -= leastSignificantBit;
+						bitBoardRed -= leastSignificantBit;
+						int lsbLog = (int)Math.Log(leastSignificantBit, 2);
+						int columnIndex = lsbLog / (int)(BoardHeight + 1);
+						nextAvailableRow[(int)(columnIndex)] = lsbLog;
+						numberOfMoves += lsbLog - (BoardHeight + 1) * columnIndex;
+					}
+					searchMask >>= 1;
+				}
+				// Now we use the total number of moves to determine whose move it is
+				_RedPlayerStarts = (numberOfMoves & 1) == 0;
+			}
+		}
 	}
 }

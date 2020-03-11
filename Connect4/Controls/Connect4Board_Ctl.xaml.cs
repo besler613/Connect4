@@ -41,6 +41,7 @@ namespace Connect4
             get { return _GameBoard; }
             set
             {
+                BoardData.Clear();
                 _GameBoard = value;
                 Connect4.GamePosition.CheckerStateEnum[,] gameBoardColumns = _GameBoard.GetBoardColumns();
                 BoardWidth = _GameBoard.BoardWidth;
