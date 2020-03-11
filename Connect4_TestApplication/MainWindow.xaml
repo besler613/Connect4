@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Connect4_TestApplication"
         xmlns:connect4="clr-namespace:Connect4;assembly=Connect4"
         mc:Ignorable="d"
-        Title="MainWindow">
+        Title="MainWindow" Loaded="Window_Loaded">
     <Window.Resources>
         <DataTemplate x:Key="moveButton_DataTemplate">
             <Button Content="&#8681;" Width="50" FontSize="24" Click="Button_Click_1"/>
