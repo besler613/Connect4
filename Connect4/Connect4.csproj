@@ -89,9 +89,9 @@
     <Compile Include="Controls\Connect4Board_Ctl.xaml.cs">
       <DependentUpon>Connect4Board_Ctl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Position and Board\Class1.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Position and Board\GamePosition.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>

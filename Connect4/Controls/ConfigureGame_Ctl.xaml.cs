@@ -36,5 +36,46 @@ namespace Connect4
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
         }
         #endregion
+
+        #region Public Properties
+        public int NumberColumns
+        {
+            get
+            {
+                int rVal;
+                if (Int32.TryParse(tbNColumns.Text, out rVal))
+                    return rVal;
+                else
+                    throw new Exception("Invalid entry.");
+            }
+        }
+        public int NumberRows
+        {
+            get
+            {
+                int rVal;
+                if (Int32.TryParse(tbNRows.Text, out rVal))
+                    return rVal;
+                else
+                    throw new Exception("Invalid entry.");
+            }
+        }
+        public int NInARow
+        {
+            get
+            {
+                int rVal;
+                if (Int32.TryParse(tbNInARow.Text, out rVal))
+                    return rVal;
+                else
+                    throw new Exception("Invalid entry.");
+            }
+        }
+        #endregion
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = true;
+        }
     }
 }

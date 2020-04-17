@@ -27,26 +27,52 @@ namespace Connect4_TestApplication
         }
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
+            Connect4.ConfigureGame_Ctl configCtl = new Connect4.ConfigureGame_Ctl();
+            configCtl.ShowDialog();
             int width = 7;
             int height = 6;
             int numberToWin = 4;
+            try
+            {
+                width = configCtl.NumberColumns;
+                height = configCtl.NumberRows;
+                numberToWin = configCtl.NInARow;
+            }
+            catch
+            {
+                MessageBox.Show("Invalid Input");
+            }
             board_VM.GameBoard = new Connect4.GamePosition(width, height, numberToWin);
         }
+
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
             board_VM.GameBoard.PlayMove((int)((FrameworkElement)e.OriginalSource).DataContext);
         }
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             if (board_VM.GameBoard.NumberOfMoves > 0)
                 board_VM.GameBoard.TakebackMoves(1);
         }
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            (new Connect4.ConfigureGame_Ctl()).ShowDialog();
+            Connect4.ConfigureGame_Ctl configCtl = new Connect4.ConfigureGame_Ctl();
+            configCtl.ShowDialog();
             int width = 7;
             int height = 6;
             int numberToWin = 4;
+            try
+            {
+                width = configCtl.NumberColumns;
+                height = configCtl.NumberRows;
+                numberToWin = configCtl.NInARow;
+            }
+            catch
+            {
+                MessageBox.Show("Invalid Input");
+            }
             board_VM.GameBoard = new Connect4.GamePosition(width, height, numberToWin);
         }
     }
