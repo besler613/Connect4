@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.IdGenerators;
+using MongoDB.Bson;
 
 namespace Connect4
 {
@@ -20,6 +23,9 @@ namespace Connect4
 	/// </item>
 	/// </list>
 	/// </summary>
+	/// <remarks>The basic idea which I use here (encoding the position in two bitboards to allow fast manipulations) was first created by the famous A.I. specialist
+	/// John Tromp in the 1990's.  His original idea has been expanded on slightly to allow for more space efficient storage (see <see cref="ID"/>, and to allow for different target
+	/// lengths (e.g. "Connect 5" or "Connect 3").</remarks>
 	/// <remarks>The basic idea which I use here (encoding the position in two bitboards to allow fast manipulations) was first created by the famous A.I. specialist
 	/// John Tromp in the 1990's.  His original idea has been expanded on slightly to allow for more space efficient storage (see <see cref="ID"/>, and to allow for different target
 	/// lengths (e.g. "Connect 5" or "Connect 3").</remarks>
