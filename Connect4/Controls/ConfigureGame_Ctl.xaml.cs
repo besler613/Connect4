@@ -14,7 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Connect4.Controls
+namespace Connect4
 {
     /// <summary>
     /// Interaction logic for ConfigureGame_Ctl.xaml
