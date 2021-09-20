@@ -91,7 +91,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Position and Board\GamePosition.cs" />
+    <Compile Include="Position and Board\CheckerStateEnum.cs" />
+    <Compile Include="Position and Board\Game.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
