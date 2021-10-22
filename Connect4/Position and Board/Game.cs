@@ -12,7 +12,7 @@ namespace Connect4
 	/// <term>Efficient Computations</term>
 	/// <description><b>Make Move</b>, <b>Takeback Move</b>, and <b>Check for Win</b> operations can be performed by ultra fast bitwise operations.  
 	/// <para>See: <see cref="CheckForWin"/>/></para>
-	/// <para>See Also: <seealso cref="Game.playMove_Internal(int, CheckerStateEnum)"/>/></para></description>
+	/// <para>See Also: <seealso cref="AddChecker"/>/></para></description>
 	/// </item>
 	/// <item>
 	/// <term>Efficient Storage</term>
@@ -29,23 +29,12 @@ namespace Connect4
 		private readonly Stack<int> _moves = new Stack<int>();
 		private ulong _bitBoardRed;
 		private ulong _bitBoardYellow;
-		private readonly int[] _nextAvailableRow;
 		private readonly int[] _bitmapShiftValues;    //Setting up our bitmap shifting distances.  These will be used to shift our bitmaps along the four different directions in which one can achieve a line (vertical, diagonal down, horizontal, diagonal up).
 		private readonly ulong _bottomRow;  // This is used for the transformation to a unique ID
 		private readonly ulong _topRow;  // This is used for the transformation FROM our unique ID
 		private readonly int _numberToWin;
 
         /// <summary>
-		/// This property encodes/decodes the current game position into a single, unique <b>BitBoard</b>.
-		/// </summary>
-		/// <remarks>Since the output of this property uniquely represents the full state of a game, it is ideal for use as the unique ID for a database table.</remarks>
-        // Step-by-Step Explanation:
-        // 1) "bitBoardYellow ^ bitBoardRed..." - This gives us a mask identifying all occupied spaces, 
-        // 2) "...+ bitBoardRed + bottomRow" - This results in a bitboard identical to bitBoardRed but with an extra 1 at the top of every column.  This is used to indicate the first unnoccupied square and has the function of making the ID unique.
-		public ulong Id
-            => (_bitBoardYellow ^ _bitBoardRed) + _bottomRow + _bitBoardRed;
-
-		/// <summary>
 		/// Constructor for creating a new game of Connect 4 with an empty board.
 		/// </summary>
 		/// <param name="width">The width of the board.  (See <see cref="MaxBoardWidth"/>)</param>
@@ -69,9 +58,9 @@ namespace Connect4
 			this._numberToWin = numberToWin;
 			BoardWidth = width;
 			BoardHeight = height;
-			_nextAvailableRow = new int[BoardWidth];
+			NextAvailableRow = new int[BoardWidth];
 			for (int i = 0; i < BoardWidth; i++)
-				_nextAvailableRow[i] = i * (BoardHeight + 1);
+				NextAvailableRow[i] = i * (BoardHeight + 1);
 			_bitmapShiftValues = new int[4] { 1, BoardHeight, BoardHeight + 1, BoardHeight + 2 };
 			ulong topPositionInColumn = ((ulong)1 << BoardHeight);
 			_bottomRow = 1;
@@ -113,19 +102,34 @@ namespace Connect4
         public int NumberOfMoves => _moves.Count;
 
         /// <summary>
-        /// Indicates the player whose turn it is to move.
+        /// This property encodes/decodes the current game position into a single, unique <b>BitBoard</b>.
         /// </summary>
-        /// <value>A <see cref="CheckerStateEnum"/> representing the whose turn it is to move./></value>
-        public CheckerStateEnum PlayerToMove =>
+        /// <remarks>Since the output of this property uniquely represents the full state of a game, it is ideal for use as the unique ID for a database table.</remarks>
+        // Step-by-Step Explanation:
+        // 1) "bitBoardYellow ^ bitBoardRed..." - This gives us a mask identifying all occupied spaces, 
+        // 2) "...+ bitBoardRed + bottomRow" - This results in a bitboard identical to bitBoardRed but with an extra 1 at the top of every column.  This is used to indicate the first unnoccupied square and has the function of making the ID unique.
+        public ulong Id
+            => (_bitBoardYellow ^ _bitBoardRed) + _bottomRow + _bitBoardRed;
+
+		/// <summary>
+		/// Indicates the player whose turn it is to move.
+		/// </summary>
+		/// <value>A <see cref="CheckerStateEnum"/> representing the whose turn it is to move./></value>
+		public CheckerStateEnum PlayerToMove =>
             (_redPlayerStarts & ((_moves.Count & 1) == 0)) 
                 ? CheckerStateEnum.Red			// Red player started and we've had an even number of moves, so it's yellows turn
                 : CheckerStateEnum.Yellow; // Otherwise it must be reds turn.
 
+		/// <summary>
+		/// 
+		/// </summary>
+		public int[] NextAvailableRow;
+
         /// <summary>
-        /// Indicates the current winner of the game.
-        /// </summary>
-        /// <value>A <see cref="CheckerStateEnum"/> representing the winner given the position on the board, with <b>Empty</b> representing an ongoing or drawn game./></value>
-        public CheckerStateEnum GameWinner { get; private set; }
+		/// Indicates the current winner of the game.
+		/// </summary>
+		/// <value>A <see cref="CheckerStateEnum"/> representing the winner given the position on the board, with <b>Empty</b> representing an ongoing or drawn game./></value>
+		public CheckerStateEnum GameWinner { get; private set; }
             = CheckerStateEnum.None;
 
 		/// <summary>
@@ -141,6 +145,7 @@ namespace Connect4
 			if (MoveMade != null)
 				MoveMade(row, column, checker);
 		}
+
 		private void RaiseMoveTakeBack(int row, int column)
 		{
 			if (MoveTakeBack != null)
@@ -156,7 +161,7 @@ namespace Connect4
 		public void PlayMove(int columnIndex)
 		{
 			// Error checking our input
-			int rowIndex = _nextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
+			int rowIndex = NextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
 			if (columnIndex >= BoardWidth)
 				throw new ArgumentException("Invalid Move: Column index of " + columnIndex.ToString() + " exceeds the board width (" + BoardWidth.ToString() + ").");
 			else if (columnIndex < 0)
@@ -164,15 +169,16 @@ namespace Connect4
 			else if (rowIndex >= BoardHeight)
 				throw new ArgumentException("Invalid Move: Column index of " + columnIndex.ToString() + " is full.");
 			CheckerStateEnum toMove = PlayerToMove;
-			playMove_Internal(columnIndex, toMove);
-			if (CheckForWin((toMove == CheckerStateEnum.Red ? ref _bitBoardRed : ref _bitBoardYellow)))
+			AddChecker(columnIndex, toMove);
+			if (CheckForWin(toMove))
 				GameWinner = toMove;
 			else
 				GameWinner = CheckerStateEnum.None;
 			_moves.Push(columnIndex);
 			RaiseMoveMade(rowIndex, columnIndex, toMove);
 		}
-		/// <summary>
+
+        /// <summary>
 		/// Method used to take back one or more moves.
 		/// </summary>
 		/// <param name="numMoves">The number of moves to take back.</param>
@@ -186,12 +192,13 @@ namespace Connect4
 			for (int i = 0; i < numMoves; i++)
 			{
 				int columnIndex = _moves.Pop();
-				int rowIndex = --_nextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
-				(PlayerToMove == CheckerStateEnum.Red ? ref _bitBoardRed : ref _bitBoardYellow) ^= ((ulong)1 << _nextAvailableRow[columnIndex]);
+				int rowIndex = --NextAvailableRow[columnIndex] - (BoardHeight + 1) * columnIndex;
+                RemoveChecker(columnIndex);
 				GameWinner = CheckerStateEnum.None;    // NOTE: This assumes that a game did not continue after someone won, which is up to the consumer to enforce! 
 				RaiseMoveTakeBack(rowIndex, columnIndex);
 			}
 		}
+
 		/// <summary>
 		/// Function used to check if a move is valid and legal given the board position and size.
 		/// </summary>
@@ -199,8 +206,9 @@ namespace Connect4
 		/// <returns><see cref="Boolean"/> value indicating whether the move is legal and valid.</returns>
 		public Boolean IsValidMove(int columnIndex)
 		{
-			return (!(columnIndex >= BoardWidth || columnIndex < 0 || _nextAvailableRow[columnIndex] - 7 * columnIndex >= BoardHeight));
+			return (!(columnIndex >= BoardWidth || columnIndex < 0 || NextAvailableRow[columnIndex] - 7 * columnIndex >= BoardHeight));
 		}
+
 		/// <summary>
 		/// Returns a representation of the current board position./>
 		/// </summary>
@@ -212,7 +220,7 @@ namespace Connect4
 			{
 				for (int j = 0; j < BoardWidth; j++)
 				{
-					if (i < _nextAvailableRow[j] - (BoardHeight + 1) * j)
+					if (i < NextAvailableRow[j] - (BoardHeight + 1) * j)
 					{
 						if ((_bitBoardRed & ((ulong)1 << (BoardHeight + 1) * j + i)) != 0)
 							board[i, j] = CheckerStateEnum.Red; // Red checker found.
@@ -228,41 +236,49 @@ namespace Connect4
 			return board;
 		}
 
+        /// <summary>
+        /// <b>Internal</b> method used to make a move.
+        /// </summary>
+        /// <param name="columnIndex">The column index of the move to be made.</param>
+        /// <param name="toMove">The player who is making the move.</param>
+        /// <remarks>
+        /// The purpose of separating the actual mechanics of "making a move" into this function is to avoid the computational overhead of error checking, event raising,
+        /// checking whose move it is, checking for wins, etc., with the objective of optimizing for speed.  This API should therefore be used instead of the public <see cref="PlayMove(int)"/>
+        /// by a derived class when performing searches.  However, it is up to the consumer of this API to send valid arguments, and to call "checkForWin" following the move (or as appropriate).
+        /// </remarks>
+        public void AddChecker(int columnIndex, CheckerStateEnum toMove)
+            => (toMove == CheckerStateEnum.Red ? ref _bitBoardRed : ref _bitBoardYellow) ^= (ulong)1 << NextAvailableRow[columnIndex]++;
+
 		/// <summary>
-		/// <b>Internal</b> method used to make a move.
+		/// Method used to remove the last checker of a column.
 		/// </summary>
-		/// <param name="columnIndex">The column index of the move to be made.</param>
-		/// <param name="toMove">The player who is making the move.</param>
-		/// <remarks>
-		/// The purpose of separating the actual mechanics of "making a move" into this function is to avoid the computational overhead of error checking, event raising,
-		/// checking whose move it is, checking for wins, etc., with the objective of optimizing for speed.  This API should therefore be used instead of the public <see cref="PlayMove(int)"/>
-		/// by a derived class when performing searches.  However, it is up to the consumer of this API to send valid arguments, and to call "checkForWin" following the move (or as appropriate).
-		/// </remarks>
-		protected void playMove_Internal(int columnIndex, CheckerStateEnum toMove)
-		{
-			ulong encodedMove = (ulong)1 << _nextAvailableRow[columnIndex]++;    // Doing two things: Encoding our move into its own bitboard "encodedMove", and incrementing our column height.
-			(toMove == CheckerStateEnum.Red ? ref _bitBoardRed : ref _bitBoardYellow) ^= encodedMove;
-		}
+		/// <param name="columnIndex"></param>
+        public void RemoveChecker(int columnIndex)
+            => (PlayerToMove == CheckerStateEnum.Red ? ref _bitBoardRed : ref _bitBoardYellow) ^= ((ulong)1 << NextAvailableRow[columnIndex]);
 
 		/// <summary>
 		/// Function used to check if the current position on the board is a win for one player.
 		/// </summary>
 		/// <param name="bitBoard">The bitboard representing the board position for one player.</param>
 		/// <returns>A <see cref="Boolean"/> indicating whether the position is won for the player represented by <paramref name="bitBoard"/>.</returns>
-		protected Boolean CheckForWin(ulong bitBoard)
-		{
-			foreach (int shiftDir in _bitmapShiftValues)
-			{
-				ulong bitBoardCopy = bitBoard;
-				for (int i = 1; i < _numberToWin; i++)
-					bitBoardCopy = bitBoardCopy & (bitBoard >> i * shiftDir);
-				if (bitBoardCopy != 0)
-					return true;
-			}
-			return false;
-		}
+		public Boolean CheckForWin(CheckerStateEnum toMove)
+        {
+            var bitBoard = toMove == CheckerStateEnum.Red 
+                ? ref _bitBoardRed 
+                : ref _bitBoardYellow;
 
-        private void SetPosition(ulong positionId)
+			foreach (int shiftDir in _bitmapShiftValues)
+            {
+                ulong bitBoardCopy = bitBoard;
+                for (int i = 1; i < _numberToWin; i++)
+                    bitBoardCopy = bitBoardCopy & (bitBoard >> i * shiftDir);
+                if (bitBoardCopy != 0)
+                    return true;
+            }
+            return false;
+        }
+
+		private void setPosition(ulong positionId)
         {
             _moves.Clear();
             _bitBoardRed = positionId;
@@ -285,7 +301,7 @@ namespace Connect4
                     _bitBoardRed -= leastSignificantBit;
                     int lsbLog = (int)Math.Log(leastSignificantBit, 2);
                     int columnIndex = lsbLog / (int)(BoardHeight + 1);
-                    _nextAvailableRow[(int)(columnIndex)] = lsbLog;
+                    NextAvailableRow[(int)(columnIndex)] = lsbLog;
                     numberOfMoves += lsbLog - (BoardHeight + 1) * columnIndex;
                 }
                 searchMask >>= 1;

@@ -34,16 +34,16 @@ namespace Connect4
         #region Public Fields
         private int _BoardWidth;
         private int _BoardHeight;
-        private Connect4.GamePosition.CheckerStateEnum _CurrentWinner = Connect4.GamePosition.CheckerStateEnum.None;
-        private Connect4.GamePosition _GameBoard;
-        public Connect4.GamePosition GameBoard
+        private Connect4.CheckerStateEnum _CurrentWinner = Connect4.CheckerStateEnum.None;
+        private Connect4.Game _GameBoard;
+        public Connect4.Game GameBoard
         {
             get { return _GameBoard; }
             set
             {
                 BoardData.Clear();
                 _GameBoard = value;
-                Connect4.GamePosition.CheckerStateEnum[,] gameBoardColumns = _GameBoard.GetBoardColumns();
+                Connect4.CheckerStateEnum[,] gameBoardColumns = _GameBoard.GetBoardColumns();
                 BoardWidth = _GameBoard.BoardWidth;
                 BoardHeight = _GameBoard.BoardHeight;
                 for (int i = _GameBoard.BoardHeight - 1; i >= 0; i--)   //We have to swap the indexing here since index 0 is at the bottom of a Connect 4 Board
@@ -53,14 +53,14 @@ namespace Connect4
                         nextRow.RowData.Add(new Connect4Board_CheckerModel(gameBoardColumns[i, j]));
                     BoardData.Add(nextRow);
                 }
-                _GameBoard.MoveMade += (int row, int column, Connect4.GamePosition.CheckerStateEnum checker) =>
+                _GameBoard.MoveMade += (int row, int column, Connect4.CheckerStateEnum checker) =>
                 {
                     BoardData[_GameBoard.BoardHeight - row - 1].RowData[column].CheckerState = checker;
                     CurrentWinner = _GameBoard.GameWinner;
                 };
                 _GameBoard.MoveTakeBack += (int row, int column) =>
                 {
-                    BoardData[_GameBoard.BoardHeight - row - 1].RowData[column].CheckerState = Connect4.GamePosition.CheckerStateEnum.None;
+                    BoardData[_GameBoard.BoardHeight - row - 1].RowData[column].CheckerState = Connect4.CheckerStateEnum.None;
                     CurrentWinner = _GameBoard.GameWinner;
                 };
                 OnPropertyChanged();
@@ -84,7 +84,7 @@ namespace Connect4
                 OnPropertyChanged();
             }
         }
-        public Connect4.GamePosition.CheckerStateEnum CurrentWinner
+        public Connect4.CheckerStateEnum CurrentWinner
         {
             get { return _CurrentWinner; }
             private set
@@ -128,8 +128,8 @@ namespace Connect4
     public class Connect4Board_CheckerModel : System.ComponentModel.INotifyPropertyChanged
     {
         #region Public Fields
-        private Connect4.GamePosition.CheckerStateEnum _Checker = Connect4.GamePosition.CheckerStateEnum.None;
-        public Connect4.GamePosition.CheckerStateEnum CheckerState
+        private Connect4.CheckerStateEnum _Checker = Connect4.CheckerStateEnum.None;
+        public Connect4.CheckerStateEnum CheckerState
         {
             get { return _Checker; }
             set
@@ -141,7 +141,7 @@ namespace Connect4
         #endregion
 
         #region Constructors
-        public Connect4Board_CheckerModel(Connect4.GamePosition.CheckerStateEnum initialCheckerState)
+        public Connect4Board_CheckerModel(Connect4.CheckerStateEnum initialCheckerState)
         {
             CheckerState = initialCheckerState;
         }
@@ -163,11 +163,11 @@ namespace Connect4
         #region IValueConverter Implementation
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            switch ((Connect4.GamePosition.CheckerStateEnum)value)
+            switch ((Connect4.CheckerStateEnum)value)
             {
-                case Connect4.GamePosition.CheckerStateEnum.Yellow:
+                case Connect4.CheckerStateEnum.Yellow:
                     return System.Windows.Media.Brushes.Yellow;
-                case Connect4.GamePosition.CheckerStateEnum.Red:
+                case Connect4.CheckerStateEnum.Red:
                     return System.Windows.Media.Brushes.Red;
                 default:
                     return System.Windows.Media.Brushes.FloralWhite;
@@ -184,9 +184,9 @@ namespace Connect4
         #region IValueConverter Implementation
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            switch ((Connect4.GamePosition.CheckerStateEnum)value)
+            switch ((Connect4.CheckerStateEnum)value)
             {
-                case Connect4.GamePosition.CheckerStateEnum.None:
+                case Connect4.CheckerStateEnum.None:
                     return System.Windows.Visibility.Collapsed;
                 default:
                     return System.Windows.Visibility.Visible;
@@ -203,11 +203,11 @@ namespace Connect4
         #region IValueConverter Implementation
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            switch ((Connect4.GamePosition.CheckerStateEnum)value)
+            switch ((Connect4.CheckerStateEnum)value)
             {
-                case Connect4.GamePosition.CheckerStateEnum.Red:
+                case Connect4.CheckerStateEnum.Red:
                     return "RED WINS!!";
-                case Connect4.GamePosition.CheckerStateEnum.Yellow:
+                case Connect4.CheckerStateEnum.Yellow:
                     return "YELLOW WINS!!";
                 default:
                     return String.Empty;

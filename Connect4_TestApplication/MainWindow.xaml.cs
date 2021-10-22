@@ -42,7 +42,7 @@ namespace Connect4_TestApplication
             {
                 MessageBox.Show("Invalid Input");
             }
-            board_VM.GameBoard = new Connect4.GamePosition(width, height, numberToWin);
+            board_VM.GameBoard = new Connect4.Game(width, height, numberToWin);
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
@@ -73,7 +73,7 @@ namespace Connect4_TestApplication
             {
                 MessageBox.Show("Invalid Input");
             }
-            board_VM.GameBoard = new Connect4.GamePosition(width, height, numberToWin);
+            board_VM.GameBoard = new Connect4.Game(width, height, numberToWin);
         }
     }
     public class IntToIEnumerableConverter : IValueConverter

@@ -89,6 +89,7 @@
     <Compile Include="Controls\Connect4Board_Ctl.xaml.cs">
       <DependentUpon>Connect4Board_Ctl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="TablebaseEngine\TablebaseEngine.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Position and Board\CheckerStateEnum.cs" />
@@ -130,6 +131,13 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Connect4_Data\Connect4_Data.csproj">
+      <Project>{f0600a43-963d-4889-ae67-1bc00abbc06d}</Project>
+      <Name>Connect4_Data</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\MongoDB.Libmongocrypt.1.0.0\build\MongoDB.Libmongocrypt.targets" Condition="Exists('..\packages\MongoDB.Libmongocrypt.1.0.0\build\MongoDB.Libmongocrypt.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
